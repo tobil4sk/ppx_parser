@@ -14,7 +14,7 @@ let test_consume_spaces () =
 
 (* (1) Bind the result of a parser call to a constant in a '%let' extension *)
 let[@warning "-8"] bind_const =
-  let expect el = function%parser [ k ] when k = el -> true | [] -> false in
+  let expect el = function%parser [ k;_s ] when k = el -> true | [] -> false in
   function%parser
   | [ [%let true = expect 1]; [%let true = expect 2] ] -> true | [] -> false
 

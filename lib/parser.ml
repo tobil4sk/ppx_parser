@@ -11,6 +11,11 @@ let try_with_fail_in ~loc var_pat fn_ident cont_expr =
     in
     [%e cont_expr]]
 
+let bind_stream_in ~loc var_pat e2 =
+  [%expr
+    let [%p var_pat] = ppx____parser____stream____ in
+    [%e e2]]
+
 let expand_list_elem ~loc cont_expr = function
   | {
       ppat_desc =
@@ -42,6 +47,8 @@ let expand_list_elem ~loc cont_expr = function
 
 let rec expand_list_seq_tl ~loc result_expr = function
   | [%pat? []] -> result_expr
+  | [%pat? [%p? { ppat_desc = Ppat_var _; _ } as stream_ident] :: []] ->
+    bind_stream_in ~loc stream_ident result_expr
   | [%pat? [%p? hd] :: [%p? tl]] ->
       let cont_expr = expand_list_seq_tl ~loc result_expr tl in
       expand_list_elem ~loc:hd.ppat_loc cont_expr hd
@@ -76,6 +83,13 @@ let expand_list_seq ~loc ctxt { pc_lhs; pc_guard; pc_rhs } to_match_expr
   | [%pat? []] ->
       let pat = [%pat? _] in
       let case = { pc_lhs = pat; pc_guard; pc_rhs } in
+      let cases =
+        match pc_guard with None -> case :: [] | _ -> prepend_to_cases case
+      in
+      (ctxt, to_match_expr, cases)
+  | [%pat? [%p? { ppat_desc = Ppat_var _; _ } as stream_ident] :: []] ->
+      let pat = [%pat? _] in
+      let case = { pc_lhs = pat; pc_guard; pc_rhs = bind_stream_in ~loc stream_ident pc_rhs } in
       let cases =
         match pc_guard with None -> case :: [] | _ -> prepend_to_cases case
       in

@@ -35,14 +35,28 @@ let test_identity_parser () =
   let expected =
     [%expr
       function
-      | ppx____parser____stream____ -> (
+      | ppx____parser____stream____ ->
           match [%e peek] with
-          | Some x ->
-              let () = [%e junk] in
-              x
-          | _ -> [%e raise_fail_exn])]
+          | _ ->
+              let x = ppx____parser____stream____ in
+              x ]
   in
   check_eq ~expected ~actual "identity"
+
+let test_bind_final_var_to_stream_parser () =
+  let actual = f [%expr function%parser [ 1; s ] -> do_something s] in
+  let expected =
+    [%expr
+      function
+      | ppx____parser____stream____ -> (
+          match [%e peek] with
+          | Some 1 ->
+            let () = [%e junk] in
+            let s = ppx____parser____stream____ in
+            do_something s
+          | _ -> [%e raise_fail_exn])]
+  in
+  check_eq ~expected ~actual "bind_final_var_to_stream"
 
 let test_seq_parser () =
   let actual =
@@ -103,6 +117,7 @@ let tests =
   [
     test_case "empty" `Quick test_empty_parser;
     test_case "empty_match" `Quick test_empty_parser_match;
+    test_case "bind_final_var_to_stream" `Quick test_bind_final_var_to_stream_parser;
     test_case "pop_any" `Quick test_wildcard_parser;
     test_case "identity" `Quick test_identity_parser;
     test_case "seq" `Quick test_seq_parser;
